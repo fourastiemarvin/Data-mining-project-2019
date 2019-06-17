@@ -1,4 +1,5 @@
 import sys
+import numpy as np
 import btk
 
 reader = btk.btkAcquisitionFileReader() # build a btk reader object
@@ -6,9 +7,20 @@ reader.SetFilename("CP_GMFCS1_01916_20130128_18.c3d") # set a filename to the re
 reader.Update()
 acq = reader.GetOutput() # acq is the btk aquisition object
 
-freq = acq.GetPointFrequency() # give the point frequency
-print('freq : ', freq)
-n_frames = acq.GetPointFrameNumber() # give the number of frames
-print('n_frames : ', n_frames)
-first_frame = acq.GetFirstFrame()
-print('first_frame ', first_frame)
+def get_train_set():
+    train_set = np.array([])
+    for i in range(100):
+        try:
+            event_frame = acq.GetEvent(i).GetFrame()
+            tmp_set = np.array([acq.GetEvent(i).GetLabel(),
+                                    acq.GetPoint('LHEE').GetValues()[event_frame,2],
+                                    acq.GetPoint('RHEE').GetValues()[event_frame,2]])
+            train_set = np.concatenate((train_set,tmp_set), axis=0)
+        except Exception as e:
+            return train_set
+print(get_train_set())
+
+# for i in range(20):
+#     data_FrameRef = np.array([  acq.GetPoint('LHEE').GetValues()[i,2],
+#                                 acq.GetPoint('RHEE').GetValues()[i,2]])
+#     print(data_FrameRef)
