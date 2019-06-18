@@ -1,11 +1,16 @@
 import sys
 import numpy as np
 import btk
+import glob
 
 reader = btk.btkAcquisitionFileReader() # build a btk reader object
 reader.SetFilename("CP_GMFCS1_01916_20130128_18.c3d") # set a filename to the reader
 reader.Update()
 acq = reader.GetOutput() # acq is the btk aquisition object
+
+list_of_files = glob.glob('*.c3d')
+for file_name in list_of_files:
+    print(file_name)
 
 def get_train_set():
     captor = 2
