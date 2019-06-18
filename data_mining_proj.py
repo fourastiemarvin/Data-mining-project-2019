@@ -1,12 +1,13 @@
 import sys
-import numpy as np
 import btk
 import glob
 import random
+import numpy as np
+import pandas as pd
 from sklearn import tree
 from sklearn import linear_model
 from sklearn.naive_bayes import GaussianNB
-import pandas as pd
+
 
 def get_data_set():
     list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/CP/*.c3d')
@@ -87,7 +88,7 @@ def test_set():
                 test_set = np.delete(test_set, 0, 0)
                 break
         res = clf.predict(test_set[:,1:captor])
-        
+
         df = pd.DataFrame(data = res, columns = ['predictions'])
         print(df.loc[df['predictions'] != 'No_Event'])
         #print(df)
