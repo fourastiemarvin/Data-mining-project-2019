@@ -13,7 +13,7 @@ from sklearn.neural_network import MLPClassifier
 
 def get_data(nb_captor):
     captor = nb_captor
-    list_of_files_CP = glob.glob('./Sofamehack2019/Sub_DB_Checked/CP/*.c3d')
+    list_of_files_CP = glob.glob('./Sofamehack2019/Sub_DB_Checked/FD/*.c3d')
     #list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/CP/CP_GMFCS1_01916_20130128_18.c3d']
     data_set = np.array([np.zeros(captor+1)])
 
@@ -51,8 +51,10 @@ def get_data(nb_captor):
 
 def get_prediction(nb_captor,X,y,algo):
     captor = nb_captor
-    list_of_files_CP = glob.glob('./Sofamehack2019/Sub_DB_Checked/CP/*.c3d')
-    #list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/CP/CP_GMFCS1_01916_20130128_18.c3d']
+    #list_of_files_CP = glob.glob('./Sofamehack2019/Sub_DB_Checked/CP/*.c3d')
+    #list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/CP/CP_GMFCS2_00239_20081029_14.c3d']
+    list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/FD/Club_Foot_02275_20141126_25.c3d']
+
 
     if (algo == 'DT'):
         clf = tree.DecisionTreeClassifier()
@@ -63,7 +65,7 @@ def get_prediction(nb_captor,X,y,algo):
     elif (algo == 'KNN'):
         clf = KNeighborsClassifier(n_neighbors=3)
     elif (algo == 'MLP'):
-        clf = MLPClassifier(hidden_layer_sizes=(3, 3))
+        clf = MLPClassifier(hidden_layer_sizes=(15, 15, 15), max_iter = 500)
     clf.fit(X, y)
 
     for file_name_CP in list_of_files_CP:
@@ -94,7 +96,7 @@ def get_prediction(nb_captor,X,y,algo):
             pred_KNN = K_NN(X,y,X_test,clf)
         elif (algo == 'MLP'):
             pred_MLP = MLP(X,y,X_test,clf)
-    return
+    return pred_KNN_centroid
 
 def decision_tree(X,y,X_test,clf):
     #range_no_event = range(event_frame-9,event_frame-1) + range(event_frame+2,event_frame+10)
@@ -112,9 +114,11 @@ def gaussian_naive_bayes(X,y,X_test,clf):
     return predictions_NB
 
 def K_NN_Centroid(X,y,X_test,clf):
+    # Foot_Off_GS premier de l'intervalle
+    # Foot_Strike_GS dernier de l'intervalle
     predictions_KNN_centroid = clf.predict(X_test)
     df = pd.DataFrame(data = predictions_KNN_centroid, columns = ['predictions_KNN_centroid'])
-    print(df.loc[df['predictions_KNN_centroid'] != 'No_Event'])
+    #print(df.loc[df['predictions_KNN_centroid'] != 'No_Event'].to_string())
     #print(df.to_string())
     return predictions_KNN_centroid
 
@@ -122,7 +126,7 @@ def K_NN(X,y,X_test,clf):
     #range_no_event = range(event_frame-4,event_frame-1) + range(event_frame+2,event_frame+5)
     predictions_KNN = clf.predict(X_test)
     df = pd.DataFrame(data = predictions_KNN, columns = ['predictions_KNN'])
-    print(df.loc[df['predictions_KNN'] != 'No_Event'])
+    #print(df.loc[df['predictions_KNN'] != 'No_Event'])
     #print(df.to_string())
     return predictions_KNN
 
@@ -130,13 +134,57 @@ def MLP(X,y,X_test,clf):
     #range_no_event = range(event_frame-4,event_frame-1) + range(event_frame+2,event_frame+5)
     predictions_MLP = clf.predict(X_test)
     df = pd.DataFrame(data = predictions_MLP, columns = ['predictions_MLP'])
-    print(df.loc[df['predictions_MLP'] != 'No_Event'])
+    #print(df.loc[df['predictions_MLP'] != 'No_Event'])
     #print(df.to_string())
     return predictions_MLP
+
+def update_label(predict_list):
+    cur_label = predict_list[0]
+    index_list = []
+    for index in range(len(predict_list)):
+        if predict_list[index] == cur_label:
+            index_list.append(index)
+
+        if predict_list[index] != cur_label or index == len(predict_list)-1:
+            size = len(index_list)
+            if predict_list[index_list[0]] == 'Foot_Off_GS':
+                # predict_list[index_list[1]:index_list[size-1]+1] = 'No_Event'
+                if size > 4:
+                    print('ici',index_list)
+                    print(predict_list)
+                    # print('laaa',index_list[size-1])
+                    predict_list[index_list[0]:index_list[3]] = 'No_Event'
+                    predict_list[index_list[4]:index_list[size-1]+1] = 'No_Event'
+                elif size <= 4 and size > 1:
+                    print(index_list)
+                    predict_list[index_list[0]:index_list[size-1]] = 'No_Event'
+            elif predict_list[index_list[0]] == 'Foot_Strike_GS':
+                # print(index_list)
+                # print(index_list[size-1])
+                # predict_list[index_list[0]:index_list[size-1]] = 'No_Event'
+                # print('FS')
+                if size > 4:
+                    predict_list[index_list[0]:index_list[size-3]] = 'No_Event'
+                    predict_list[index_list[size-2]:index_list[size-1]+1] = 'No_Event'
+                elif size <= 4 and size > 1:
+                    predict_list[index_list[size-1]] = 'No_Event'
+            index_list = []
+            if index != len(predict_list)-1:
+                index_list = []
+                index_list.append(index)
+                cur_label = predict_list[index]
+            else:
+                break
+    df = pd.DataFrame(data = predict_list, columns = ['predict_list'])
+    print(df.loc[df['predict_list'] != 'No_Event'])
+    #print(df)
+    return predict_list
+
 
 def main():
     nb_capt = 6
     [X,y] = get_data(nb_capt)
-    get_prediction(nb_capt,X,y,'MLP')
+    pred = get_prediction(nb_capt,X,y,'KNN_Centroid')
+    res = update_label(pred)
 
 main()
