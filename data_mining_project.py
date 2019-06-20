@@ -53,7 +53,7 @@ def get_prediction(nb_captor,X,y,algo):
     captor = nb_captor
     #list_of_files_CP = glob.glob('./Sofamehack2019/Sub_DB_Checked/CP/*.c3d')
     #list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/CP/CP_GMFCS2_00239_20081029_14.c3d']
-    list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/FD/Club_Foot_02275_20141126_25.c3d']
+    list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/ITW/ITW_02246_20141029_13.c3d']
 
 
     if (algo == 'DT'):
@@ -144,25 +144,15 @@ def update_label(predict_list):
     for index in range(len(predict_list)):
         if predict_list[index] == cur_label:
             index_list.append(index)
-
         if predict_list[index] != cur_label or index == len(predict_list)-1:
             size = len(index_list)
             if predict_list[index_list[0]] == 'Foot_Off_GS':
-                # predict_list[index_list[1]:index_list[size-1]+1] = 'No_Event'
                 if size > 4:
-                    print('ici',index_list)
-                    print(predict_list)
-                    # print('laaa',index_list[size-1])
                     predict_list[index_list[0]:index_list[3]] = 'No_Event'
                     predict_list[index_list[4]:index_list[size-1]+1] = 'No_Event'
                 elif size <= 4 and size > 1:
-                    print(index_list)
                     predict_list[index_list[0]:index_list[size-1]] = 'No_Event'
             elif predict_list[index_list[0]] == 'Foot_Strike_GS':
-                # print(index_list)
-                # print(index_list[size-1])
-                # predict_list[index_list[0]:index_list[size-1]] = 'No_Event'
-                # print('FS')
                 if size > 4:
                     predict_list[index_list[0]:index_list[size-3]] = 'No_Event'
                     predict_list[index_list[size-2]:index_list[size-1]+1] = 'No_Event'
@@ -177,7 +167,6 @@ def update_label(predict_list):
                 break
     df = pd.DataFrame(data = predict_list, columns = ['predict_list'])
     print(df.loc[df['predict_list'] != 'No_Event'])
-    #print(df)
     return predict_list
 
 
