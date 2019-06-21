@@ -53,9 +53,9 @@ def get_data(nb_captor):
 
 def get_prediction(nb_captor,X,y,algo):
     captor = nb_captor
-    #list_of_files_CP = glob.glob('./Sofamehack2019/Sub_DB_Checked/CP/*.c3d')
+    list_of_files_CP = glob.glob('./Sofamehack2019/Sub_DB_Checked/CP/*.c3d')
     #list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/CP/CP_GMFCS2_00239_20081029_14.c3d']
-    list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/ITW/ITW_02246_20141029_13.c3d']
+    #list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/ITW/ITW_02246_20141029_13.c3d']
 
     pred_KNN_centroid_update = []
 
@@ -169,42 +169,92 @@ def update_label(predict_list):
                 index_list.append(index)
                 cur_label = predict_list[index]
             else:
-                FO_index = []
-                FS_index = []
-                for i in range(0,len(predict_list)):
-                    if predict_list[i] == 'Foot_Off_GS':
-                        FO_index.append(i)
-                    elif predict_list[i] == 'Foot_Strike_GS':
-                        FS_index.append(i)
-                print('-> FO: ',FO_index)
-                print('-> FS: ',FS_index)
-                calculate_avarage(predict_list)
+                avg_dist_FO_FS, avg_dist_FS_FO = calculate_avarage(predict_list)
+                predict_list_completed = complete_data(predict_list, avg_dist_FO_FS, avg_dist_FS_FO)
                 break
-    df = pd.DataFrame(data = predict_list, columns = ['predict_list'])
-    print(df.loc[df['predict_list'] != 'No_Event'])
-    return predict_list
+    df = pd.DataFrame(data = predict_list_completed, columns = ['predict_list_completed'])
+    print(df.loc[df['predict_list_completed'] != 'No_Event'])
+    return predict_list_completed
 
 def calculate_avarage(list_predictions):
-
+    count_FS = 0
+    count_FO = 0
+    count_FS_FS = 0
+    count_FO_FO = 0
     save_event = ''
-    
-    #for i in range(len(FO_FS_df)):
+    save_ind = 0
+    dist_FO_FS = 0
+    dist_FS_FO = 0
+    dist_FO_FO = []
+    dist_FS_FS = []
 
-    # if (list_FO_ind != [] and list_FS_ind != []):
-    #     size = min(len(list_FO_ind),len(list_FS_ind))
-    #     list_FO_ind = list_FO_ind[0:size]
-    #     list_FS_ind = list_FS_ind[0:size]
-    #
-    #     start = min(list_FO_ind[0],list_FS_ind[0])
-    #     if
-    #
-    retrun (avg_dist_FO_FS, avg_dist_FS_FO)
+    for i in range(len(list_predictions)):
+        current_event = list_predictions[i]
+        if (current_event == 'Foot_Off_GS' and save_event == ''):
+            save_event = 'Foot_Off_GS'
+            save_ind = i
+        elif (current_event == 'Foot_Strike_GS' and save_event == ''):
+            save_event = 'Foot_Strike_GS'
+            save_ind = i
+        elif (current_event == 'Foot_Strike_GS' and save_event == 'Foot_Off_GS'):
+            count_FO += 1
+            dist_FO_FS = dist_FO_FS + (i - save_ind)
+            save_event = 'Foot_Strike_GS'
+            save_ind = i
+        elif (current_event == 'Foot_Off_GS' and save_event == 'Foot_Strike_GS'):
+            count_FS += 1
+            dist_FS_FO = dist_FS_FO + (i - save_ind)
+            save_event = 'Foot_Off_GS'
+            save_ind = i
+        elif (current_event == 'Foot_Off_GS' and save_event == 'Foot_Off_GS'):
+            dist_FO_FO.append(i - save_ind)
+            save_ind = i
+            count_FO_FO += 1
+        elif (current_event == 'Foot_Strike_GS' and save_event == 'Foot_Strike_GS'):
+            dist_FS_FS.append(i - save_ind)
+            save_ind = i
+            count_FS_FS += 1
+
+    print('1: ',dist_FO_FO)
+    print('2: ',dist_FS_FS)
+
+    if (count_FO != 0):
+        avg_dist_FO_FS = dist_FO_FS/count_FO
+    else:
+        avg_dist_FO_FS = (sum(dist_FO_FO)/len(dist_FO_FO))/3
+
+    if (count_FS != 0):
+        avg_dist_FS_FO = dist_FS_FO/count_FS
+    else:
+        avg_dist_FS_FO = (sum(dist_FS_FS)/len(dist_FS_FS))*(2/3)
+
+    print('avg FO-FS: ',avg_dist_FO_FS)
+    print('avg FS-FO: ',avg_dist_FS_FO)
+    return (avg_dist_FO_FS, avg_dist_FS_FO)
+
+def complete_data(list_predictions, FO_FS, FS_FO):
+    current_label = ''
+    save_label = ''
+    save_ind = 0
+    for i in range(len(list_predictions)):
+        current_label = list_predictions[i]
+        if (current_label == 'Foot_Off_GS' and (save_label == '' or save_label == 'Foot_Strike_GS')):
+            save_label = 'Foot_Off_GS'
+            save_ind = i
+        elif (current_label == 'Foot_Strike_GS' and (save_label == '' or save_label == 'Foot_Off_GS')):
+            save_label = 'Foot_Strike_GS'
+            save_ind = i
+        elif (current_label == 'Foot_Off_GS' and save_label == 'Foot_Off_GS'):
+            list_predictions[i-FS_FO] = 'Foot_Strike_GS'
+        elif (current_label == 'Foot_Strike_GS' and save_label == 'Foot_Strike_GS'):
+            list_predictions[i-FO_FS] = 'Foot_Off_GS'
+    return list_predictions
 
 
 def main():
     nb_capt = 6
     [X,y] = get_data(nb_capt)
     pred = get_prediction(nb_capt,X,y,'KNN_Centroid')
-    print(pred)
+    #print(pred)
 
 main()
