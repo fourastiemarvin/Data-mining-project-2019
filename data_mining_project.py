@@ -9,7 +9,9 @@ from sklearn import linear_model
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors.nearest_centroid import NearestCentroid
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.neural_network import MLPClassifier
+#from sklearn.neural_network import MLPClassifier
+from collections import defaultdict
+from enum import Enum
 
 def get_data(nb_captor):
     captor = nb_captor
@@ -55,6 +57,7 @@ def get_prediction(nb_captor,X,y,algo):
     #list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/CP/CP_GMFCS2_00239_20081029_14.c3d']
     list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/ITW/ITW_02246_20141029_13.c3d']
 
+    pred_KNN_centroid_update = []
 
     if (algo == 'DT'):
         clf = tree.DecisionTreeClassifier()
@@ -92,11 +95,13 @@ def get_prediction(nb_captor,X,y,algo):
             pred_gaussianNB = gaussian_naive_bayes(X,y,X_test,clf)
         elif (algo == 'KNN_Centroid'):
             pred_KNN_centroid = K_NN_Centroid(X,y,X_test,clf)
+            pred_KNN_centroid_update.append(update_label(pred_KNN_centroid))
         elif (algo == 'KNN'):
             pred_KNN = K_NN(X,y,X_test,clf)
         elif (algo == 'MLP'):
             pred_MLP = MLP(X,y,X_test,clf)
-    return pred_KNN_centroid
+
+    return pred_KNN_centroid_update
 
 def decision_tree(X,y,X_test,clf):
     #range_no_event = range(event_frame-9,event_frame-1) + range(event_frame+2,event_frame+10)
@@ -164,16 +169,42 @@ def update_label(predict_list):
                 index_list.append(index)
                 cur_label = predict_list[index]
             else:
+                FO_index = []
+                FS_index = []
+                for i in range(0,len(predict_list)):
+                    if predict_list[i] == 'Foot_Off_GS':
+                        FO_index.append(i)
+                    elif predict_list[i] == 'Foot_Strike_GS':
+                        FS_index.append(i)
+                print('-> FO: ',FO_index)
+                print('-> FS: ',FS_index)
+                calculate_avarage(predict_list)
                 break
     df = pd.DataFrame(data = predict_list, columns = ['predict_list'])
     print(df.loc[df['predict_list'] != 'No_Event'])
     return predict_list
+
+def calculate_avarage(list_predictions):
+
+    save_event = ''
+    
+    #for i in range(len(FO_FS_df)):
+
+    # if (list_FO_ind != [] and list_FS_ind != []):
+    #     size = min(len(list_FO_ind),len(list_FS_ind))
+    #     list_FO_ind = list_FO_ind[0:size]
+    #     list_FS_ind = list_FS_ind[0:size]
+    #
+    #     start = min(list_FO_ind[0],list_FS_ind[0])
+    #     if
+    #
+    retrun (avg_dist_FO_FS, avg_dist_FS_FO)
 
 
 def main():
     nb_capt = 6
     [X,y] = get_data(nb_capt)
     pred = get_prediction(nb_capt,X,y,'KNN_Centroid')
-    res = update_label(pred)
+    print(pred)
 
 main()
