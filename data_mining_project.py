@@ -53,9 +53,12 @@ def get_data(nb_captor):
 
 def get_prediction(nb_captor,X,y,algo):
     captor = nb_captor
-    list_of_files_CP = glob.glob('./Sofamehack2019/Sub_DB_Checked/CP/*.c3d')
+    #list_of_files_CP = glob.glob('./Sofamehack2019/Sub_DB_Checked/CP/*.c3d')
     #list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/CP/CP_GMFCS2_00239_20081029_14.c3d']
     #list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/ITW/ITW_02246_20141029_13.c3d']
+    #list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/CP/CP_GMFCS3_02130_20140224_12.c3d']
+    #list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/CP/CP_GMFCS1_02125_20140416_25.c3d']
+    list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/CP/CP_GMFCS3_01346_20110427_15.c3d']
 
     pred_KNN_centroid_update = []
 
@@ -162,13 +165,15 @@ def update_label(predict_list):
                     predict_list[index_list[0]:index_list[size-3]] = 'No_Event'
                     predict_list[index_list[size-2]:index_list[size-1]+1] = 'No_Event'
                 elif size <= 4 and size > 1:
-                    predict_list[index_list[size-1]] = 'No_Event'
+                    predict_list[index_list[1]:index_list[size-1]+1] = 'No_Event'
             index_list = []
             if index != len(predict_list)-1:
                 index_list = []
                 index_list.append(index)
                 cur_label = predict_list[index]
             else:
+                df = pd.DataFrame(data = predict_list, columns = ['predict_list'])
+                print(df.loc[df['predict_list'] != 'No_Event'])
                 avg_dist_FO_FS, avg_dist_FS_FO = calculate_avarage(predict_list)
                 predict_list_completed = complete_data(predict_list, avg_dist_FO_FS, avg_dist_FS_FO)
                 break
@@ -215,18 +220,24 @@ def calculate_avarage(list_predictions):
             save_ind = i
             count_FS_FS += 1
 
-    print('1: ',dist_FO_FO)
-    print('2: ',dist_FS_FS)
-
+    # print('1: ',dist_FO_FO)
+    # print('2: ',dist_FS_FS)
+    # print('3: ',count_FO)
+    # print('4: ',count_FS)
+    #FIXME: 
     if (count_FO != 0):
         avg_dist_FO_FS = dist_FO_FS/count_FO
+    elif dist_FO_FO == []:
+        avg_dist_FS_FO = 0
     else:
-        avg_dist_FO_FS = (sum(dist_FO_FO)/len(dist_FO_FO))/3
+        avg_dist_FS_FO = (sum(dist_FO_FO)/len(dist_FO_FO))/3
 
     if (count_FS != 0):
         avg_dist_FS_FO = dist_FS_FO/count_FS
+    elif dist_FS_FS == []:
+        avg_dist_FO_FS = 0
     else:
-        avg_dist_FS_FO = (sum(dist_FS_FS)/len(dist_FS_FS))*(2/3)
+        avg_dist_FO_FS = (sum(dist_FS_FS)/len(dist_FS_FS))*(2/3)
 
     print('avg FO-FS: ',avg_dist_FO_FS)
     print('avg FS-FO: ',avg_dist_FS_FO)
