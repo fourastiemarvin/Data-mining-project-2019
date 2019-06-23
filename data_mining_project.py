@@ -12,13 +12,10 @@ from sklearn.neighbors import KNeighborsClassifier
 #from sklearn.neural_network import MLPClassifier
 from collections import defaultdict
 from enum import Enum
+from math import exp
 
-def get_data(nb_captor):
+def get_data(nb_captor, list_of_files):
     captor = nb_captor
-    list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/CP/*.c3d')
-    #list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/FD/*.c3d')
-    #list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/ITW/*.c3d')
-
     data_set = np.array([np.zeros(captor+1)])
 
     for file_name in list_of_files:
@@ -53,12 +50,11 @@ def get_data(nb_captor):
     X = data_set[:,1:captor+1].astype(np.float)
     return (X,y)
 
-def get_prediction(nb_captor,X,y,algo):
+def get_prediction(nb_captor,X,y,algo, files, list_of_files):
     captor = nb_captor
-    sum_error = 0
-    list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/CP/*.c3d')
-    #list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/FD/*.c3d')
-    #list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/ITW/*.c3d')
+    sum_error_glob = 0
+    sum_error_FO = 0
+    sum_error_FS = 0
 
     pred_KNN_centroid_update = []
 
@@ -110,17 +106,50 @@ def get_prediction(nb_captor,X,y,algo):
             pred_KNN_centroid = K_NN_Centroid(X,y,X_test,clf)
             res = update_label(pred_KNN_centroid, array_real_event)
             pred_KNN_centroid_update.append(res[0])
-            sum_error = sum_error + res[1]
+            sum_error_glob = sum_error_glob + res[1]
+            sum_error_FO = sum_error_FO + res[2]
+            sum_error_FS = sum_error_FS + res[3]
         elif (algo == 'KNN'):
             pred_KNN = K_NN(X,y,X_test,clf)
         elif (algo == 'MLP'):
             pred_MLP = MLP(X,y,X_test,clf)
+
     print(' ')
-    print('Error global: ', sum_error)
-    # ERROR CP_FO_AND_FS : 667 -> 30 * exp(1) * (667/45) = 1208
-    # ERROR FD_FO_AND_FS : 159 -> 30 * exp(1) * (159/25) = 489
-    # ERROR ITW_FO_AND_FS : 1297 -> 30 * exp(1) * (1297/20) = 5288
-    return pred_KNN_centroid_update, sum_error
+    # print('Error global: ', sum_error_glob)
+    # print('Error FO: ', sum_error_FO)
+    # print('Error FS: ', sum_error_FS)
+
+    error_global, error_FO, error_FS = compute_error(sum_error_glob, sum_error_FO, sum_error_FS, files)
+    # print('SCORE CP FO & FS: ', error_global) # SCORE CP FO & FS : 1209
+    # print('SCORE CP FO: ', error_FO) # SCORE CP FO : 547
+    # print('SCORE CP FS: ', error_FS) # SCORE CP FS : 661
+
+    print('SCORE FD FO & FS: ', error_global) # SCORE FD FO & FS : 519
+    print('SCORE FD FO: ', error_FO) # SCORE FD FO : 294
+    print('SCORE FD FS: ', error_FS) # SCORE FD FS : 225
+
+    # print('SCORE ITW FO & FS: ', error_global) # ERROR CP_FO_AND_FS : 5288
+    # print('SCORE ITW FO: ', error_FO) # ERROR CP_FO : 2895
+    # print('SCORE ITW FS: ', error_FS) # ERROR CP_FS : 2393
+    return pred_KNN_centroid_update, error_global
+
+def compute_error(sum_error_glob, sum_error_FO, sum_error_FS, files):
+    error_global_ = 0
+    error_FO_ = 0
+    error_FS_ = 0
+    if (files == 'CP'):
+        error_global_ =  30 * exp(1) * (sum_error_glob*1.00/45)
+        error_FO_ =  30 * exp(1) * (sum_error_FO*1.00/45)
+        error_FS_ =  30 * exp(1) * (sum_error_FS*1.00/45)
+    elif (files == 'FD'):
+        error_global_ =  30 * exp(1) * float(sum_error_glob*1.00/25)
+        error_FO_ =  30 * exp(1) * float(sum_error_FO*1.00/25)
+        error_FS_ =  30 * exp(1) * float(sum_error_FS*1.00/25)
+    elif (files == 'ITW'):
+        error_global_ =  30 * exp(1) * (sum_error_glob*1.00/20)
+        error_FO_ =  30 * exp(1) * (sum_error_FO*1.00/20)
+        error_FS_ =  30 * exp(1) * (sum_error_FS*1.00/20)
+    return error_global_, error_FO_, error_FS_
 
 def decision_tree(X,y,X_test,clf):
     #range_no_event = range(event_frame-9,event_frame-1) + range(event_frame+2,event_frame+10)
@@ -193,12 +222,12 @@ def update_label(predict_list, real_event):
                 #print(df.loc[df['predict_list'] != 'No_Event'])
                 avg_dist_FO_FS, avg_dist_FS_FO = calculate_avarage(predict_list)
                 predict_list_completed = complete_data(predict_list, avg_dist_FO_FS, avg_dist_FS_FO)
-                error_computed = calcul_error(predict_list_completed, real_event)
-                print('Error file: ', error_computed)
+                error_computed_glob, error_computed_FO, error_computed_FS = calcul_error(predict_list_completed, real_event)
+                print('Error file: ', error_computed_glob)
                 break
     df = pd.DataFrame(data = predict_list_completed, columns = ['predict_list_completed'])
     print(df.loc[df['predict_list_completed'] != 'No_Event'])
-    return predict_list_completed, error_computed
+    return predict_list_completed, error_computed_glob, error_computed_FO, error_computed_FS
 
 def calculate_avarage(list_predictions):
     count_FS_FO = 0
@@ -293,6 +322,9 @@ def complete_data(list_predictions, FO_FS, FS_FO):
 
 def calcul_error(predict_list, tab_real_event):
     number_frame_error = 0
+    number_frame_error_FO = 0
+    number_frame_error_FS = 0
+
     array_pred_list = np.array([np.zeros(2)])
     for i in range(len(predict_list)):
         tmp_array_pred_list = np.array([i, predict_list[i]])
@@ -307,12 +339,20 @@ def calcul_error(predict_list, tab_real_event):
             if (tab_real_event[real_evt,1] == array_pred_list[pred_evt,1]):
                 if (abs(tab_real_event[real_evt,0].astype(np.int) - array_pred_list[pred_evt,0].astype(np.int)) < min_dist):
                     min_dist = abs(tab_real_event[real_evt,0].astype(np.int)-array_pred_list[pred_evt,0].astype(np.int))
+
+        if (tab_real_event[real_evt,1] == 'Foot_Off_GS'):
+            number_frame_error_FO = number_frame_error_FO + min_dist
+        elif (tab_real_event[real_evt,1] == 'Foot_Strike_GS'):
+            number_frame_error_FS = number_frame_error_FS + min_dist
+
         number_frame_error = number_frame_error + min_dist
-    return number_frame_error
+    return number_frame_error, number_frame_error_FO, number_frame_error_FS
 
 def main():
     nb_capt = 6
-    [X,y] = get_data(nb_capt)
-    pred, error = get_prediction(nb_capt,X,y,'KNN_Centroid')
+    files = 'FD'
+    list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/'+files+'/*.c3d')
+    [X,y] = get_data(nb_capt, list_of_files)
+    pred, error = get_prediction(nb_capt,X,y,'KNN_Centroid', files, list_of_files)
 
 main()
