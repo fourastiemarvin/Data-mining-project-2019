@@ -15,13 +15,15 @@ from enum import Enum
 
 def get_data(nb_captor):
     captor = nb_captor
-    list_of_files_CP = glob.glob('./Sofamehack2019/Sub_DB_Checked/FD/*.c3d')
-    #list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/CP/CP_GMFCS1_01916_20130128_18.c3d']
+    list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/CP/*.c3d')
+    #list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/FD/*.c3d')
+    #list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/ITW/*.c3d')
+
     data_set = np.array([np.zeros(captor+1)])
 
-    for file_name_CP in list_of_files_CP:
+    for file_name in list_of_files:
         reader = btk.btkAcquisitionFileReader()
-        reader.SetFilename(file_name_CP)
+        reader.SetFilename(file_name)
         reader.Update()
         acq = reader.GetOutput()
         for i in range(100):
@@ -54,9 +56,9 @@ def get_data(nb_captor):
 def get_prediction(nb_captor,X,y,algo):
     captor = nb_captor
     sum_error = 0
-    list_of_files_CP = glob.glob('./Sofamehack2019/Sub_DB_Checked/CP/*.c3d')
-    #list_of_files_CP = glob.glob('./Sofamehack2019/Sub_DB_Checked/FD/*.c3d')
-    #list_of_files_CP = glob.glob('./Sofamehack2019/Sub_DB_Checked/ITW/*.c3d')
+    list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/CP/*.c3d')
+    #list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/FD/*.c3d')
+    #list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/ITW/*.c3d')
 
     pred_KNN_centroid_update = []
 
@@ -72,12 +74,12 @@ def get_prediction(nb_captor,X,y,algo):
         clf = MLPClassifier(hidden_layer_sizes=(15, 15, 15), max_iter = 500)
     clf.fit(X, y)
 
-    for file_name_CP in list_of_files_CP:
+    for file_name in list_of_files:
         print("\n")
         X_test = np.array([np.zeros(captor)])
         array_real_event = np.array([np.zeros(2)])
         reader = btk.btkAcquisitionFileReader()
-        reader.SetFilename(file_name_CP)
+        reader.SetFilename(file_name)
         reader.Update()
         acq = reader.GetOutput()
         for i in range(100):
@@ -89,7 +91,7 @@ def get_prediction(nb_captor,X,y,algo):
             except Exception as e:
                 array_real_event = np.delete(array_real_event, 0, 0)
                 break
-        print(file_name_CP)
+        print(file_name)
         for frame in range(1,500,1):
             try:
                 tmp_X_test = np.array([acq.GetPoint('LTOE').GetValues()[frame,2],acq.GetPoint('RTOE').GetValues()[frame,2],
@@ -115,9 +117,9 @@ def get_prediction(nb_captor,X,y,algo):
             pred_MLP = MLP(X,y,X_test,clf)
     print(' ')
     print('Error global: ', sum_error)
-    # ERROR CP_FO_AND_FS : 839 -> 30 * exp(1) * (839/45) = 1467
+    # ERROR CP_FO_AND_FS : 667 -> 30 * exp(1) * (667/45) = 1208
     # ERROR FD_FO_AND_FS : 159 -> 30 * exp(1) * (159/25) = 489
-    # ERROR ITW_FO_AND_FS : 2697 -> 30 * exp(1) * (2697/20) = 10927
+    # ERROR ITW_FO_AND_FS : 1297 -> 30 * exp(1) * (1297/20) = 5288
     return pred_KNN_centroid_update, sum_error
 
 def decision_tree(X,y,X_test,clf):
