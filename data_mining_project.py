@@ -53,12 +53,10 @@ def get_data(nb_captor):
 
 def get_prediction(nb_captor,X,y,algo):
     captor = nb_captor
-    #list_of_files_CP = glob.glob('./Sofamehack2019/Sub_DB_Checked/CP/*.c3d')
-    #list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/CP/CP_GMFCS2_00239_20081029_14.c3d']
-    #list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/ITW/ITW_02246_20141029_13.c3d']
-    #list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/CP/CP_GMFCS3_02130_20140224_12.c3d']
-    #list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/CP/CP_GMFCS1_02125_20140416_25.c3d']
-    list_of_files_CP = ['./Sofamehack2019/Sub_DB_Checked/CP/CP_GMFCS3_01346_20110427_15.c3d']
+    sum_error = 0
+    list_of_files_CP = glob.glob('./Sofamehack2019/Sub_DB_Checked/CP/*.c3d')
+    #list_of_files_CP = glob.glob('./Sofamehack2019/Sub_DB_Checked/FD/*.c3d')
+    #list_of_files_CP = glob.glob('./Sofamehack2019/Sub_DB_Checked/ITW/*.c3d')
 
     pred_KNN_centroid_update = []
 
@@ -77,10 +75,20 @@ def get_prediction(nb_captor,X,y,algo):
     for file_name_CP in list_of_files_CP:
         print("\n")
         X_test = np.array([np.zeros(captor)])
+        array_real_event = np.array([np.zeros(2)])
         reader = btk.btkAcquisitionFileReader()
         reader.SetFilename(file_name_CP)
         reader.Update()
         acq = reader.GetOutput()
+        for i in range(100):
+            try:
+                event_frame = acq.GetEvent(i).GetFrame()
+                tmp_array_real_event = np.array([event_frame, acq.GetEvent(i).GetLabel()])
+                tmp_array_real_event = np.array([tmp_array_real_event])
+                array_real_event = np.concatenate((array_real_event, tmp_array_real_event), axis=0)
+            except Exception as e:
+                array_real_event = np.delete(array_real_event, 0, 0)
+                break
         print(file_name_CP)
         for frame in range(1,500,1):
             try:
@@ -98,13 +106,19 @@ def get_prediction(nb_captor,X,y,algo):
             pred_gaussianNB = gaussian_naive_bayes(X,y,X_test,clf)
         elif (algo == 'KNN_Centroid'):
             pred_KNN_centroid = K_NN_Centroid(X,y,X_test,clf)
-            pred_KNN_centroid_update.append(update_label(pred_KNN_centroid))
+            res = update_label(pred_KNN_centroid, array_real_event)
+            pred_KNN_centroid_update.append(res[0])
+            sum_error = sum_error + res[1]
         elif (algo == 'KNN'):
             pred_KNN = K_NN(X,y,X_test,clf)
         elif (algo == 'MLP'):
             pred_MLP = MLP(X,y,X_test,clf)
-
-    return pred_KNN_centroid_update
+    print(' ')
+    print('Error global: ', sum_error)
+    # ERROR CP_FO_AND_FS : 839 -> 30 * exp(1) * (839/45) = 1467
+    # ERROR FD_FO_AND_FS : 159 -> 30 * exp(1) * (159/25) = 489
+    # ERROR ITW_FO_AND_FS : 2697 -> 30 * exp(1) * (2697/20) = 10927
+    return pred_KNN_centroid_update, sum_error
 
 def decision_tree(X,y,X_test,clf):
     #range_no_event = range(event_frame-9,event_frame-1) + range(event_frame+2,event_frame+10)
@@ -146,7 +160,8 @@ def MLP(X,y,X_test,clf):
     #print(df.to_string())
     return predictions_MLP
 
-def update_label(predict_list):
+def update_label(predict_list, real_event):
+    error_computed = 0
     cur_label = predict_list[0]
     index_list = []
     for index in range(len(predict_list)):
@@ -172,18 +187,20 @@ def update_label(predict_list):
                 index_list.append(index)
                 cur_label = predict_list[index]
             else:
-                df = pd.DataFrame(data = predict_list, columns = ['predict_list'])
-                print(df.loc[df['predict_list'] != 'No_Event'])
+                #df = pd.DataFrame(data = predict_list, columns = ['predict_list'])
+                #print(df.loc[df['predict_list'] != 'No_Event'])
                 avg_dist_FO_FS, avg_dist_FS_FO = calculate_avarage(predict_list)
                 predict_list_completed = complete_data(predict_list, avg_dist_FO_FS, avg_dist_FS_FO)
+                error_computed = calcul_error(predict_list_completed, real_event)
+                print('Error file: ', error_computed)
                 break
     df = pd.DataFrame(data = predict_list_completed, columns = ['predict_list_completed'])
     print(df.loc[df['predict_list_completed'] != 'No_Event'])
-    return predict_list_completed
+    return predict_list_completed, error_computed
 
 def calculate_avarage(list_predictions):
-    count_FS = 0
-    count_FO = 0
+    count_FS_FO = 0
+    count_FO_FS = 0
     count_FS_FS = 0
     count_FO_FO = 0
     save_event = ''
@@ -202,12 +219,12 @@ def calculate_avarage(list_predictions):
             save_event = 'Foot_Strike_GS'
             save_ind = i
         elif (current_event == 'Foot_Strike_GS' and save_event == 'Foot_Off_GS'):
-            count_FO += 1
+            count_FO_FS += 1
             dist_FO_FS = dist_FO_FS + (i - save_ind)
             save_event = 'Foot_Strike_GS'
             save_ind = i
         elif (current_event == 'Foot_Off_GS' and save_event == 'Foot_Strike_GS'):
-            count_FS += 1
+            count_FS_FO += 1
             dist_FS_FO = dist_FS_FO + (i - save_ind)
             save_event = 'Foot_Off_GS'
             save_ind = i
@@ -220,27 +237,37 @@ def calculate_avarage(list_predictions):
             save_ind = i
             count_FS_FS += 1
 
-    # print('1: ',dist_FO_FO)
-    # print('2: ',dist_FS_FS)
-    # print('3: ',count_FO)
-    # print('4: ',count_FS)
-    #FIXME: 
-    if (count_FO != 0):
-        avg_dist_FO_FS = dist_FO_FS/count_FO
-    elif dist_FO_FO == []:
-        avg_dist_FS_FO = 0
-    else:
-        avg_dist_FS_FO = (sum(dist_FO_FO)/len(dist_FO_FO))/3
+    #FIXME: when not enough prediction because big range so FO_FO FS_FS can appear
 
-    if (count_FS != 0):
-        avg_dist_FS_FO = dist_FS_FO/count_FS
-    elif dist_FS_FS == []:
-        avg_dist_FO_FS = 0
+    if (count_FS_FO == 0 and count_FO_FS == 0):
+        if (count_FO_FO == 0 and count_FS_FS == 0):
+            avg_dist_FO_FS = 0
+            avg_dist_FS_FO = 0
+        else:
+            if (count_FO_FO == 0):
+                avg_dist_FO_FS = ((sum(dist_FS_FS)/len(dist_FS_FS))*2)/3
+                avg_dist_FS_FO = (sum(dist_FS_FS)/len(dist_FS_FS))/3
+            if (count_FS_FS == 0):
+                avg_dist_FO_FS = ((sum(dist_FO_FO)/len(dist_FO_FO))*2)/3
+                avg_dist_FS_FO = (sum(dist_FO_FO)/len(dist_FO_FO))/3
+    elif (count_FS_FO != 0 and count_FO_FS == 0):
+        avg_dist_FS_FO = dist_FS_FO/count_FS_FO
+        if (count_FO_FO != 0):
+            avg_dist_FO_FS = (sum(dist_FO_FO)/len(dist_FO_FO)) - avg_dist_FS_FO
+        else:
+            avg_dist_FO_FS = 2*avg_dist_FS_FO
+    elif (count_FS_FO == 0 and count_FO_FS != 0):
+        avg_dist_FO_FS = dist_FO_FS/count_FO_FS
+        if (count_FS_FS != 0):
+            avg_dist_FS_FO = (sum(dist_FS_FS)/len(dist_FS_FS)) - avg_dist_FO_FS
+        else:
+            avg_dist_FS_FO = avg_dist_FO_FS/2
     else:
-        avg_dist_FO_FS = (sum(dist_FS_FS)/len(dist_FS_FS))*(2/3)
+        avg_dist_FS_FO = dist_FS_FO/count_FS_FO
+        avg_dist_FO_FS = dist_FO_FS/count_FO_FS
 
-    print('avg FO-FS: ',avg_dist_FO_FS)
-    print('avg FS-FO: ',avg_dist_FS_FO)
+    #print('avg FO-FS: ',avg_dist_FO_FS)
+    #print('avg FS-FO: ',avg_dist_FS_FO)
     return (avg_dist_FO_FS, avg_dist_FS_FO)
 
 def complete_data(list_predictions, FO_FS, FS_FO):
@@ -262,10 +289,28 @@ def complete_data(list_predictions, FO_FS, FS_FO):
     return list_predictions
 
 
+def calcul_error(predict_list, tab_real_event):
+    number_frame_error = 0
+    array_pred_list = np.array([np.zeros(2)])
+    for i in range(len(predict_list)):
+        tmp_array_pred_list = np.array([i, predict_list[i]])
+        tmp_array_pred_list = np.array([tmp_array_pred_list])
+        if (predict_list[i] != 'No_Event'):
+            array_pred_list = np.concatenate((array_pred_list, tmp_array_pred_list), axis=0)
+    array_pred_list = np.delete(array_pred_list, 0, 0)
+
+    for real_evt in range(len(tab_real_event)):
+        min_dist = 1000
+        for pred_evt in range(len(array_pred_list)):
+            if (tab_real_event[real_evt,1] == array_pred_list[pred_evt,1]):
+                if (abs(tab_real_event[real_evt,0].astype(np.int) - array_pred_list[pred_evt,0].astype(np.int)) < min_dist):
+                    min_dist = abs(tab_real_event[real_evt,0].astype(np.int)-array_pred_list[pred_evt,0].astype(np.int))
+        number_frame_error = number_frame_error + min_dist
+    return number_frame_error
+
 def main():
     nb_capt = 6
     [X,y] = get_data(nb_capt)
-    pred = get_prediction(nb_capt,X,y,'KNN_Centroid')
-    #print(pred)
+    pred, error = get_prediction(nb_capt,X,y,'KNN_Centroid')
 
 main()
