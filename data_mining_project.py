@@ -17,6 +17,7 @@ from math import exp
 def get_data(nb_captor, list_of_files):
     captor = nb_captor
     data_set = np.array([np.zeros(captor+1)])
+    range_no_event = []
 
     for file_name in list_of_files:
         reader = btk.btkAcquisitionFileReader()
@@ -30,20 +31,26 @@ def get_data(nb_captor, list_of_files):
                 tmp_set = np.array([acq.GetEvent(i).GetLabel(),
                                     acq.GetPoint('LTOE').GetValues()[event_frame,2],acq.GetPoint('RTOE').GetValues()[event_frame,2],
                                     acq.GetPoint('LHEE').GetValues()[event_frame,2],acq.GetPoint('RHEE').GetValues()[event_frame,2],
+                                    # acq.GetPoint('LTIB').GetValues()[event_frame,2],acq.GetPoint('RTIB').GetValues()[event_frame,2],
+                                    # acq.GetPoint('LTHI').GetValues()[event_frame,2],acq.GetPoint('RTHI').GetValues()[event_frame,2]
                                     acq.GetPoint('LANK').GetValues()[event_frame,2],acq.GetPoint('RANK').GetValues()[event_frame,2]
-                                    #acq.GetPoint('LTHI').GetValues()[event_frame,2],acq.GetPoint('RTHI').GetValues()[event_frame,2]
                                     ])
                 tmp_set = np.array([tmp_set])
                 data_set = np.concatenate((data_set, tmp_set), axis=0)
                 if (acq.GetEvent(i).GetLabel() == 'Foot_Off_GS' or acq.GetEvent(i).GetLabel() == 'Foot_Strike_GS'):
                     range_no_event = range(event_frame-4,event_frame-1) + range(event_frame+2,event_frame+5)
-                    #print(range_no_event)
+                    # print(range_no_event)
+                # if acq.GetEvent(i).GetLabel() == 'Foot_Off_GS':
+                #     range_no_event + range(event_frame+2,event_frame+5)
+                # elif acq.GetEvent(i).GetLabel() == 'Foot_Strike_GS':
+                #     range_no_event + range(event_frame+2,event_frame+4)
                     for j in range_no_event:
                         no_event_set = np.array(['No_Event',
                                                 acq.GetPoint('LTOE').GetValues()[j,2],acq.GetPoint('RTOE').GetValues()[j,2],
                                                 acq.GetPoint('LHEE').GetValues()[j,2],acq.GetPoint('RHEE').GetValues()[j,2],
+                                                # acq.GetPoint('LTIB').GetValues()[j,2],acq.GetPoint('RTIB').GetValues()[j,2],
+                                                # acq.GetPoint('LTHI').GetValues()[j,2],acq.GetPoint('RTHI').GetValues()[j,2]
                                                 acq.GetPoint('LANK').GetValues()[j,2],acq.GetPoint('RANK').GetValues()[j,2]
-                                                #acq.GetPoint('LTHI').GetValues()[j,2],acq.GetPoint('RTHI').GetValues()[j,2]
                                                 ])
                         no_event_set = np.array([no_event_set])
                         data_set = np.concatenate((data_set, no_event_set), axis=0)
@@ -69,7 +76,7 @@ def get_prediction(nb_captor,X,y,algo, files, list_of_files):
     elif (algo == 'KNN_Centroid'):
         clf = NearestCentroid()
     elif (algo == 'KNN'):
-        clf = KNeighborsClassifier(n_neighbors=3)
+        clf = KNeighborsClassifier(n_neighbors=2)
     elif (algo == 'MLP'):
         clf = MLPClassifier(hidden_layer_sizes=(15, 15, 15), max_iter = 500)
     clf.fit(X, y)
@@ -96,8 +103,9 @@ def get_prediction(nb_captor,X,y,algo, files, list_of_files):
             try:
                 tmp_X_test = np.array([ acq.GetPoint('LTOE').GetValues()[frame,2],acq.GetPoint('RTOE').GetValues()[frame,2],
                                         acq.GetPoint('LHEE').GetValues()[frame,2],acq.GetPoint('RHEE').GetValues()[frame,2],
+                                        # acq.GetPoint('LTIB').GetValues()[frame,2],acq.GetPoint('RTIB').GetValues()[frame,2],
+                                        # acq.GetPoint('LTHI').GetValues()[frame,2],acq.GetPoint('RTHI').GetValues()[frame,2]
                                         acq.GetPoint('LANK').GetValues()[frame,2],acq.GetPoint('RANK').GetValues()[frame,2]
-                                        #acq.GetPoint('LTHI').GetValues()[frame,2],acq.GetPoint('RTHI').GetValues()[frame,2]
                                         ])
                 tmp_X_test = np.array([tmp_X_test])
                 X_test = np.concatenate((X_test, tmp_X_test), axis=0)
@@ -343,13 +351,42 @@ def calcul_error(predict_list, tab_real_event):
         number_frame_error.append(min_dist)
     return number_frame_error, number_frame_error_FO, number_frame_error_FS
 
-def main():
+
+def cross_validation():
     nb_capt = 6
-    files = 'CP'
+    files = 'ITW'
     list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/'+files+'/*.c3d')
-    list_of_files_testing = list_of_files[(len(list_of_files))/3:(len(list_of_files))*2/3]
-    list_of_files_training = list_of_files[0:(len(list_of_files))/3]+ list_of_files[(len(list_of_files))*2/3:len(list_of_files)]
-    [X,y] = get_data(nb_capt, list_of_files_training)
-    pred, error = get_prediction(nb_capt,X,y,'KNN_Centroid', files, list_of_files_testing)
+    test1 = list_of_files[0:(len(list_of_files))/3]
+    test2 = list_of_files[0:(len(list_of_files))/3] + list_of_files[(len(list_of_files))*2/3:len(list_of_files)]
+    test3 = list_of_files[(len(list_of_files))*2/3:len(list_of_files)]
+    train1 = list_of_files[0:len(list_of_files)*2/3]
+    train2 = list_of_files[0:(len(list_of_files))/3] + list_of_files[(len(list_of_files))*2/3:len(list_of_files)]
+    train3 = list_of_files[len(list_of_files)/3:len(list_of_files)]
+
+    [X1,y1] = get_data(nb_capt, train1)
+    [X2,y2] = get_data(nb_capt, train2)
+    [X3,y3] = get_data(nb_capt, train3)
+    error = (get_prediction(nb_capt,X1,y1,'KNN_Centroid', files, test1)[1] +
+                get_prediction(nb_capt,X2,y2,'KNN_Centroid', files, test2)[1] +
+                get_prediction(nb_capt,X3,y3,'KNN_Centroid', files, test3)[1])/3
+    print('score: ',error)
+    # print('/',get_prediction(nb_capt,X1,y1,'KNN_Centroid', files, test1)[1] +
+                # get_prediction(nb_capt,X2,y2,'KNN_Centroid', files, test2)[1])
+    return error
+
+
+def main():
+    # nb_capt = 8
+    # files = 'ITW'
+    # list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/'+files+'/*.c3d')
+    # [X,y] = get_data(nb_capt, list_of_files_training)
+    # pred, error = get_prediction(nb_capt,X,y,'KNN_Centroid', files, list_of_files_testing)
+    # list_of_files_testing = list_of_files[(len(list_of_files))/3:(len(list_of_files))*2/3]
+    # list_of_files_training = list_of_files[0:(len(list_of_files))/3]+ list_of_files[(len(list_of_files))*2/3:len(list_of_files)]
+    # list_of_files_testing = list_of_files[(len(list_of_files))*2/3:len(list_of_files)]
+    # list_of_files_training = list_of_files[0:(len(list_of_files))*2/3]
+    # [X,y] = get_data(nb_capt, list_of_files_training)
+    # pred, error = get_prediction(nb_capt,X,y,'KNN_Centroid', files, list_of_files_testing)
+    cross_validation()
 
 main()
