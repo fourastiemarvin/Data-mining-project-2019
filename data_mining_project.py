@@ -352,9 +352,9 @@ def calcul_error(predict_list, tab_real_event):
     return number_frame_error, number_frame_error_FO, number_frame_error_FS
 
 
-def cross_validation():
-    nb_capt = 6
-    files = 'ITW'
+def cross_validation(nb_capt,files):
+    # nb_capt = 6
+    # files = 'ITW'
     list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/'+files+'/*.c3d')
     test1 = list_of_files[0:(len(list_of_files))/3]
     test2 = list_of_files[0:(len(list_of_files))/3] + list_of_files[(len(list_of_files))*2/3:len(list_of_files)]
@@ -375,7 +375,7 @@ def cross_validation():
     return error
 
 
-def main():
+def main(nb_capt=6, files='FD'):
     # nb_capt = 8
     # files = 'ITW'
     # list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/'+files+'/*.c3d')
@@ -387,6 +387,6 @@ def main():
     # list_of_files_training = list_of_files[0:(len(list_of_files))*2/3]
     # [X,y] = get_data(nb_capt, list_of_files_training)
     # pred, error = get_prediction(nb_capt,X,y,'KNN_Centroid', files, list_of_files_testing)
-    cross_validation()
+    cross_validation(nb_capt,files)
 
 main()
