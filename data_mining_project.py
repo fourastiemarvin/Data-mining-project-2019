@@ -1,4 +1,6 @@
+#!/usr/bin/env python
 import sys
+import getopt
 import btk
 import glob
 import random
@@ -14,8 +16,14 @@ from collections import defaultdict
 from enum import Enum
 from math import exp
 
-def get_data(nb_captor, list_of_files):
-    captor = nb_captor
+
+def get_data(list_of_files, files):
+    if (files == 'CP'):
+        captor = 7
+    elif (files == 'FD'):
+        captor = 6
+    elif (files == 'ITW'):
+        captor = 9
     data_set = np.array([np.zeros(captor+1)])
     range_no_event = []
 
@@ -27,31 +35,72 @@ def get_data(nb_captor, list_of_files):
         for i in range(100):
             try:
                 event_frame = acq.GetEvent(i).GetFrame()
+                max_LTOE_RTOE = abs(acq.GetPoint('LTOE').GetValues()[event_frame,2]-acq.GetPoint('RTOE').GetValues()[event_frame,2])
+                max_LTOE_RTOE_2 = abs(acq.GetPoint('LTOE').GetValues()[event_frame,0]-acq.GetPoint('RTOE').GetValues()[event_frame,0])
 
-                tmp_set = np.array([acq.GetEvent(i).GetLabel(),
-                                    acq.GetPoint('LTOE').GetValues()[event_frame,2],acq.GetPoint('RTOE').GetValues()[event_frame,2],
-                                    acq.GetPoint('LHEE').GetValues()[event_frame,2],acq.GetPoint('RHEE').GetValues()[event_frame,2],
-                                    # acq.GetPoint('LTIB').GetValues()[event_frame,2],acq.GetPoint('RTIB').GetValues()[event_frame,2],
-                                    # acq.GetPoint('LTHI').GetValues()[event_frame,2],acq.GetPoint('RTHI').GetValues()[event_frame,2]
-                                    acq.GetPoint('LANK').GetValues()[event_frame,2],acq.GetPoint('RANK').GetValues()[event_frame,2]
-                                    ])
+                # CP
+                if (files == 'CP'):
+                    tmp_set = np.array([acq.GetEvent(i).GetLabel(),
+                                        acq.GetPoint('LTOE').GetValues()[event_frame,2],acq.GetPoint('RTOE').GetValues()[event_frame,2],
+                                        acq.GetPoint('LHEE').GetValues()[event_frame,2],acq.GetPoint('RHEE').GetValues()[event_frame,2],
+                                        acq.GetPoint('LANK').GetValues()[event_frame,2],acq.GetPoint('RANK').GetValues()[event_frame,2],
+                                        max_LTOE_RTOE
+                                        ])
+
+                # FD
+                elif (files == 'FD'):
+                    tmp_set = np.array([acq.GetEvent(i).GetLabel(),
+                                        acq.GetPoint('LTOE').GetValues()[event_frame,2],acq.GetPoint('RTOE').GetValues()[event_frame,2],
+                                        acq.GetPoint('LHEE').GetValues()[event_frame,2],acq.GetPoint('RHEE').GetValues()[event_frame,2],
+                                        acq.GetPoint('LANK').GetValues()[event_frame,2],acq.GetPoint('RANK').GetValues()[event_frame,2]
+                                        ])
+
+                # ITW
+                elif (files == 'ITW'):
+                    tmp_set = np.array([acq.GetEvent(i).GetLabel(),
+                                        acq.GetPoint('LTOE').GetValues()[event_frame,2],acq.GetPoint('RTOE').GetValues()[event_frame,2],
+                                        acq.GetPoint('LHEE').GetValues()[event_frame,2],acq.GetPoint('RHEE').GetValues()[event_frame,2],
+                                        max_LTOE_RTOE,
+                                        acq.GetPoint('LTHI').GetValues()[event_frame,2],acq.GetPoint('RTHI').GetValues()[event_frame,2],
+                                        acq.GetPoint('LTIB').GetValues()[event_frame,2],acq.GetPoint('RTIB').GetValues()[event_frame,2]
+                                        ])
+
                 tmp_set = np.array([tmp_set])
                 data_set = np.concatenate((data_set, tmp_set), axis=0)
                 if (acq.GetEvent(i).GetLabel() == 'Foot_Off_GS' or acq.GetEvent(i).GetLabel() == 'Foot_Strike_GS'):
                     range_no_event = range(event_frame-4,event_frame-1) + range(event_frame+2,event_frame+5)
-                    # print(range_no_event)
-                # if acq.GetEvent(i).GetLabel() == 'Foot_Off_GS':
-                #     range_no_event + range(event_frame+2,event_frame+5)
-                # elif acq.GetEvent(i).GetLabel() == 'Foot_Strike_GS':
-                #     range_no_event + range(event_frame+2,event_frame+4)
+
                     for j in range_no_event:
-                        no_event_set = np.array(['No_Event',
-                                                acq.GetPoint('LTOE').GetValues()[j,2],acq.GetPoint('RTOE').GetValues()[j,2],
-                                                acq.GetPoint('LHEE').GetValues()[j,2],acq.GetPoint('RHEE').GetValues()[j,2],
-                                                # acq.GetPoint('LTIB').GetValues()[j,2],acq.GetPoint('RTIB').GetValues()[j,2],
-                                                # acq.GetPoint('LTHI').GetValues()[j,2],acq.GetPoint('RTHI').GetValues()[j,2]
-                                                acq.GetPoint('LANK').GetValues()[j,2],acq.GetPoint('RANK').GetValues()[j,2]
-                                                ])
+                        max_LTOE_RTOE_no_evt = abs(acq.GetPoint('LTOE').GetValues()[j,2]-acq.GetPoint('RTOE').GetValues()[j,2])
+                        max_LTOE_RTOE_no_evt_2 = abs(acq.GetPoint('LTOE').GetValues()[j,0]-acq.GetPoint('RTOE').GetValues()[j,0])
+
+                        # CP
+                        if (files == 'CP'):
+                            no_event_set = np.array(['No_Event',
+                                                    acq.GetPoint('LTOE').GetValues()[j,2],acq.GetPoint('RTOE').GetValues()[j,2],
+                                                    acq.GetPoint('LHEE').GetValues()[j,2],acq.GetPoint('RHEE').GetValues()[j,2],
+                                                    acq.GetPoint('LANK').GetValues()[j,2],acq.GetPoint('RANK').GetValues()[j,2],
+                                                    max_LTOE_RTOE_no_evt
+                                                    ])
+
+                        # FD
+                        elif (files == 'FD'):
+                            no_event_set = np.array(['No_Event',
+                                                    acq.GetPoint('LTOE').GetValues()[j,2],acq.GetPoint('RTOE').GetValues()[j,2],
+                                                    acq.GetPoint('LHEE').GetValues()[j,2],acq.GetPoint('RHEE').GetValues()[j,2],
+                                                    acq.GetPoint('LANK').GetValues()[j,2],acq.GetPoint('RANK').GetValues()[j,2]
+                                                    ])
+
+                        # ITW
+                        elif (files == 'ITW'):
+                            no_event_set = np.array(['No_Event',
+                                                    acq.GetPoint('LTOE').GetValues()[j,2],acq.GetPoint('RTOE').GetValues()[j,2],
+                                                    acq.GetPoint('LHEE').GetValues()[j,2],acq.GetPoint('RHEE').GetValues()[j,2],
+                                                    max_LTOE_RTOE_no_evt,
+                                                    acq.GetPoint('LTHI').GetValues()[j,2],acq.GetPoint('RTHI').GetValues()[j,2],
+                                                    acq.GetPoint('LTIB').GetValues()[j,2],acq.GetPoint('RTIB').GetValues()[j,2]
+                                                    ])
+
                         no_event_set = np.array([no_event_set])
                         data_set = np.concatenate((data_set, no_event_set), axis=0)
             except Exception as e:
@@ -61,8 +110,13 @@ def get_data(nb_captor, list_of_files):
     X = data_set[:,1:captor+1].astype(np.float)
     return (X,y)
 
-def get_prediction(nb_captor,X,y,algo, files, list_of_files):
-    captor = nb_captor
+def get_prediction(X,y,algo, files, list_of_files):
+    if (files == 'CP'):
+        captor = 7
+    elif (files == 'FD'):
+        captor = 6
+    elif (files == 'ITW'):
+        captor = 9
     sum_error_glob = []
     sum_error_FO = []
     sum_error_FS = []
@@ -74,11 +128,11 @@ def get_prediction(nb_captor,X,y,algo, files, list_of_files):
     elif (algo == 'NB'):
         clf = GaussianNB()
     elif (algo == 'KNN_Centroid'):
-        clf = NearestCentroid()
+        clf = NearestCentroid(metric='euclidean')
     elif (algo == 'KNN'):
         clf = KNeighborsClassifier(n_neighbors=2)
     elif (algo == 'MLP'):
-        clf = MLPClassifier(hidden_layer_sizes=(15, 15, 15), max_iter = 500)
+        clf = MLPClassifier(hidden_layer_sizes=(4, 4, 4), max_iter = 500)
     clf.fit(X, y)
 
     for file_name in list_of_files:
@@ -101,12 +155,33 @@ def get_prediction(nb_captor,X,y,algo, files, list_of_files):
         print(file_name)
         for frame in range(1,500,1):
             try:
-                tmp_X_test = np.array([ acq.GetPoint('LTOE').GetValues()[frame,2],acq.GetPoint('RTOE').GetValues()[frame,2],
-                                        acq.GetPoint('LHEE').GetValues()[frame,2],acq.GetPoint('RHEE').GetValues()[frame,2],
-                                        # acq.GetPoint('LTIB').GetValues()[frame,2],acq.GetPoint('RTIB').GetValues()[frame,2],
-                                        # acq.GetPoint('LTHI').GetValues()[frame,2],acq.GetPoint('RTHI').GetValues()[frame,2]
-                                        acq.GetPoint('LANK').GetValues()[frame,2],acq.GetPoint('RANK').GetValues()[frame,2]
-                                        ])
+                max_LTOE_RTOE_ = abs(acq.GetPoint('LTOE').GetValues()[frame,2]-acq.GetPoint('RTOE').GetValues()[frame,2])
+                max_LTOE_RTOE_2 = abs(acq.GetPoint('LTOE').GetValues()[frame,0]-acq.GetPoint('RTOE').GetValues()[frame,0])
+
+                # CP
+                if (files == 'CP'):
+                    tmp_X_test = np.array([ acq.GetPoint('LTOE').GetValues()[frame,2],acq.GetPoint('RTOE').GetValues()[frame,2],
+                                            acq.GetPoint('LHEE').GetValues()[frame,2],acq.GetPoint('RHEE').GetValues()[frame,2],
+                                            acq.GetPoint('LANK').GetValues()[frame,2],acq.GetPoint('RANK').GetValues()[frame,2],
+                                            max_LTOE_RTOE_
+                                            ])
+
+                # FD
+                elif (files == 'FD'):
+                    tmp_X_test = np.array([ acq.GetPoint('LTOE').GetValues()[frame,2],acq.GetPoint('RTOE').GetValues()[frame,2],
+                                            acq.GetPoint('LHEE').GetValues()[frame,2],acq.GetPoint('RHEE').GetValues()[frame,2],
+                                            acq.GetPoint('LANK').GetValues()[frame,2],acq.GetPoint('RANK').GetValues()[frame,2]
+                                            ])
+
+                # ITW
+                elif (files == 'ITW'):
+                    tmp_X_test = np.array([ acq.GetPoint('LTOE').GetValues()[frame,2],acq.GetPoint('RTOE').GetValues()[frame,2],
+                                            acq.GetPoint('LHEE').GetValues()[frame,2],acq.GetPoint('RHEE').GetValues()[frame,2],
+                                            max_LTOE_RTOE_,
+                                            acq.GetPoint('LTHI').GetValues()[frame,2],acq.GetPoint('RTHI').GetValues()[frame,2],
+                                            acq.GetPoint('LTIB').GetValues()[frame,2],acq.GetPoint('RTIB').GetValues()[frame,2]
+                                            ])
+
                 tmp_X_test = np.array([tmp_X_test])
                 X_test = np.concatenate((X_test, tmp_X_test), axis=0)
             except Exception as e:
@@ -141,14 +216,12 @@ def get_prediction(nb_captor,X,y,algo, files, list_of_files):
     print('FO & FS: %.2e'%error_global)
     print('FO: %.2e'%error_FO)
     print('FS: %.2e'%error_FS)
-
     return pred_KNN_centroid_update, error_global
 
 def compute_error(sum_error_glob, sum_error_FO, sum_error_FS, files):
     error_global_ = 0.0
     error_FO_ = 0.0
     error_FS_ = 0.0
-    # if (files == 'CP'):
     error_global_ = sum(list(map(lambda x:exp(x),sum_error_glob)))
     error_FO_ = sum(list(map(lambda x:exp(x),sum_error_FO)))
     error_FS_ =  sum(list(map(lambda x:exp(x),sum_error_FS)))
@@ -182,8 +255,8 @@ def K_NN(X,y,X_test,clf):
     #range_no_event = range(event_frame-4,event_frame-1) + range(event_frame+2,event_frame+5)
     predictions_KNN = clf.predict(X_test)
     df = pd.DataFrame(data = predictions_KNN, columns = ['predictions_KNN'])
-    #print(df.loc[df['predictions_KNN'] != 'No_Event'])
-    #print(df.to_string())
+    print(df.loc[df['predictions_KNN'] != 'No_Event'])
+    print(df.to_string())
     return predictions_KNN
 
 def MLP(X,y,X_test,clf):
@@ -271,8 +344,6 @@ def calculate_avarage(list_predictions):
             save_ind = i
             count_FS_FS += 1
 
-    #FIXME: when not enough prediction because big range so FO_FO FS_FS can appear
-
     if (count_FS_FO == 0 and count_FO_FS == 0):
         if (count_FO_FO == 0 and count_FS_FS == 0):
             avg_dist_FO_FS = 0
@@ -310,6 +381,9 @@ def complete_data(list_predictions, FO_FS, FS_FO):
     save_ind = 0
     for i in range(len(list_predictions)):
         current_label = list_predictions[i]
+        if (FO_FS == 0 and FS_FO == 0):
+            list_predictions[20] = 'Foot_Strike_GS'
+            list_predictions[80] = 'Foot_Off_GS'
         if (current_label == 'Foot_Off_GS' and (save_label == '' or save_label == 'Foot_Strike_GS')):
             save_label = 'Foot_Off_GS'
             save_ind = i
@@ -337,7 +411,7 @@ def calcul_error(predict_list, tab_real_event):
     array_pred_list = np.delete(array_pred_list, 0, 0)
 
     for real_evt in range(len(tab_real_event)):
-        min_dist = 400
+        min_dist = 100
         for pred_evt in range(len(array_pred_list)):
             if (tab_real_event[real_evt,1] == array_pred_list[pred_evt,1]):
                 if (abs(tab_real_event[real_evt,0].astype(np.int) - array_pred_list[pred_evt,0].astype(np.int)) < min_dist):
@@ -352,41 +426,28 @@ def calcul_error(predict_list, tab_real_event):
     return number_frame_error, number_frame_error_FO, number_frame_error_FS
 
 
-def cross_validation(nb_capt,files):
-    # nb_capt = 6
-    # files = 'ITW'
+def cross_validation(files):
     list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/'+files+'/*.c3d')
     test1 = list_of_files[0:(len(list_of_files))/3]
-    test2 = list_of_files[0:(len(list_of_files))/3] + list_of_files[(len(list_of_files))*2/3:len(list_of_files)]
+    test2 = list_of_files[(len(list_of_files))/3:(len(list_of_files))*2/3]
     test3 = list_of_files[(len(list_of_files))*2/3:len(list_of_files)]
-    train1 = list_of_files[0:len(list_of_files)*2/3]
+    train1 = list_of_files[(len(list_of_files))/3:len(list_of_files)]
     train2 = list_of_files[0:(len(list_of_files))/3] + list_of_files[(len(list_of_files))*2/3:len(list_of_files)]
-    train3 = list_of_files[len(list_of_files)/3:len(list_of_files)]
+    train3 = list_of_files[0:len(list_of_files)*2/3]
 
-    [X1,y1] = get_data(nb_capt, train1)
-    [X2,y2] = get_data(nb_capt, train2)
-    [X3,y3] = get_data(nb_capt, train3)
-    error = (get_prediction(nb_capt,X1,y1,'KNN_Centroid', files, test1)[1] +
-                get_prediction(nb_capt,X2,y2,'KNN_Centroid', files, test2)[1] +
-                get_prediction(nb_capt,X3,y3,'KNN_Centroid', files, test3)[1])/3
-    print('score: ',error)
-    # print('/',get_prediction(nb_capt,X1,y1,'KNN_Centroid', files, test1)[1] +
-                # get_prediction(nb_capt,X2,y2,'KNN_Centroid', files, test2)[1])
+    [X1,y1] = get_data(train1, files)
+    [X2,y2] = get_data(train2, files)
+    [X3,y3] = get_data(train3, files)
+    error = (get_prediction(X1,y1,'KNN', files, test1)[1] +
+                get_prediction(X2,y2,'KNN', files, test2)[1] +
+                get_prediction(X3,y3,'KNN', files, test3)[1])/3
+    print(' ')
+    print('Mean global score: %.2e'%error)
     return error
 
 
-def main(nb_capt=6, files='FD'):
-    # nb_capt = 8
-    # files = 'ITW'
-    # list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/'+files+'/*.c3d')
-    # [X,y] = get_data(nb_capt, list_of_files_training)
-    # pred, error = get_prediction(nb_capt,X,y,'KNN_Centroid', files, list_of_files_testing)
-    # list_of_files_testing = list_of_files[(len(list_of_files))/3:(len(list_of_files))*2/3]
-    # list_of_files_training = list_of_files[0:(len(list_of_files))/3]+ list_of_files[(len(list_of_files))*2/3:len(list_of_files)]
-    # list_of_files_testing = list_of_files[(len(list_of_files))*2/3:len(list_of_files)]
-    # list_of_files_training = list_of_files[0:(len(list_of_files))*2/3]
-    # [X,y] = get_data(nb_capt, list_of_files_training)
-    # pred, error = get_prediction(nb_capt,X,y,'KNN_Centroid', files, list_of_files_testing)
-    cross_validation(nb_capt,files)
+def main(files='ITW'):
+    cross_validation(files)
 
-main()
+opts, args = getopt.getopt(sys.argv[1:], 'f', ['files='])
+main(files=args[0])
