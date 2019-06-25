@@ -255,8 +255,8 @@ def K_NN(X,y,X_test,clf):
     #range_no_event = range(event_frame-4,event_frame-1) + range(event_frame+2,event_frame+5)
     predictions_KNN = clf.predict(X_test)
     df = pd.DataFrame(data = predictions_KNN, columns = ['predictions_KNN'])
-    print(df.loc[df['predictions_KNN'] != 'No_Event'])
-    print(df.to_string())
+    #print(df.loc[df['predictions_KNN'] != 'No_Event'])
+    #print(df.to_string())
     return predictions_KNN
 
 def MLP(X,y,X_test,clf):
@@ -438,9 +438,9 @@ def cross_validation(files):
     [X1,y1] = get_data(train1, files)
     [X2,y2] = get_data(train2, files)
     [X3,y3] = get_data(train3, files)
-    error = (get_prediction(X1,y1,'KNN', files, test1)[1] +
-                get_prediction(X2,y2,'KNN', files, test2)[1] +
-                get_prediction(X3,y3,'KNN', files, test3)[1])/3
+    error = (get_prediction(X1,y1,'KNN_Centroid', files, test1)[1] +
+                get_prediction(X2,y2,'KNN_Centroid', files, test2)[1] +
+                get_prediction(X3,y3,'KNN_Centroid', files, test3)[1])/3
     print(' ')
     print('Mean global score: %.2e'%error)
     return error
