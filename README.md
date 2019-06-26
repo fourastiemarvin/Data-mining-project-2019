@@ -14,6 +14,7 @@ To run the code, simply execute the following command line in your terminal:
 .\run_project.sh
 ```
 After that you can choose which type of file you will use to learn the classifier by typing CP, FD or ITW.
+The output is written in the out.txt file
 
 ## Authors
 * Patrick SARDINHA
