@@ -17,6 +17,10 @@ from enum import Enum
 from math import exp
 
 
+# allows to retrieve data relating to a same pathology (number of sensors are depending about this)
+# labels 'No_event' are added defined by a range before and after an event
+# training is performed
+# the function returns X and y
 def get_data(list_of_files, files):
     if (files == 'CP'):
         captor = 7
@@ -110,6 +114,11 @@ def get_data(list_of_files, files):
     X = data_set[:,1:captor+1].astype(np.float)
     return (X,y)
 
+
+# this function give the first predictions for an algorithm selected
+# sensors and their number depend on diseases
+# for each file (same pathology) tests are calculated
+# then the algorithm for prediction is called
 def get_prediction(X,y,algo, files, list_of_files):
     if (files == 'CP'):
         captor = 7
@@ -210,7 +219,6 @@ def get_prediction(X,y,algo, files, list_of_files):
     print('Error FS: ', sum_error_FS)
 
     error_global, error_FO, error_FS = compute_error(sum_error_glob, sum_error_FO, sum_error_FS, files)
-
     print(' ')
     print('SCORE '+files+': ')
     print('FO & FS: %.2e'%error_global)
@@ -218,6 +226,9 @@ def get_prediction(X,y,algo, files, list_of_files):
     print('FS: %.2e'%error_FS)
     return pred_KNN_centroid_update, error_global
 
+
+# allows to compute the score for one pathology by the formula given
+# a score for FO / FS / Global is calculated
 def compute_error(sum_error_glob, sum_error_FO, sum_error_FS, files):
     error_global_ = 0.0
     error_FO_ = 0.0
@@ -227,6 +238,8 @@ def compute_error(sum_error_glob, sum_error_FO, sum_error_FS, files):
     error_FS_ =  sum(list(map(lambda x:exp(x),sum_error_FS)))
     return error_global_, error_FO_, error_FS_
 
+
+# prediction by Decision-tree
 def decision_tree(X,y,X_test,clf):
     #range_no_event = range(event_frame-9,event_frame-1) + range(event_frame+2,event_frame+10)
     predictions_DT = clf.predict(X_test)
@@ -235,6 +248,8 @@ def decision_tree(X,y,X_test,clf):
     #print(df)
     return predictions_DT
 
+
+# prediction by Naive-bayes
 def gaussian_naive_bayes(X,y,X_test,clf):
     predictions_NB = clf.predict(X_test)
     df = pd.DataFrame(data = predictions_NB, columns = ['predictions_NB'])
@@ -242,6 +257,8 @@ def gaussian_naive_bayes(X,y,X_test,clf):
     #print(df)
     return predictions_NB
 
+
+# prediction by Nearest-centroid
 def K_NN_Centroid(X,y,X_test,clf):
     # Foot_Off_GS premier de l'intervalle
     # Foot_Strike_GS dernier de l'intervalle
@@ -251,6 +268,8 @@ def K_NN_Centroid(X,y,X_test,clf):
     #print(df.to_string())
     return predictions_KNN_centroid
 
+
+# prediction by K-nearest-neighbors
 def K_NN(X,y,X_test,clf):
     #range_no_event = range(event_frame-4,event_frame-1) + range(event_frame+2,event_frame+5)
     predictions_KNN = clf.predict(X_test)
@@ -259,6 +278,8 @@ def K_NN(X,y,X_test,clf):
     #print(df.to_string())
     return predictions_KNN
 
+
+# prediction by neural network
 def MLP(X,y,X_test,clf):
     #range_no_event = range(event_frame-4,event_frame-1) + range(event_frame+2,event_frame+5)
     predictions_MLP = clf.predict(X_test)
@@ -267,6 +288,12 @@ def MLP(X,y,X_test,clf):
     #print(df.to_string())
     return predictions_MLP
 
+
+# this function allows to update intervals the predicted list
+# this list contains intervals of event like [FO FO ... FO NE NE ... NE FS FS ... FS]
+# theses intervals are update by taking only one event which will be the predicted
+# this choice is doing by approximate a pattern of walk
+# the labels not selected are set to 'No_event'
 def update_label(predict_list, real_event):
     error_computed = 0
     cur_label = predict_list[0]
@@ -305,6 +332,10 @@ def update_label(predict_list, real_event):
     print(df.loc[df['predict_list_completed'] != 'No_Event'])
     return predict_list_completed, error_computed_glob, error_computed_FO, error_computed_FS
 
+
+# this function allows to calculate averages relative to the walk of a given patient
+# in some case we can get directly the distance between FO - FS and FS - FO or
+# we can deduct theses distances only with distance between FO - FO and FS - FS
 def calculate_avarage(list_predictions):
     count_FS_FO = 0
     count_FO_FS = 0
@@ -370,11 +401,14 @@ def calculate_avarage(list_predictions):
     else:
         avg_dist_FS_FO = dist_FS_FO/count_FS_FO
         avg_dist_FO_FS = dist_FO_FS/count_FO_FS
-
     #print('avg FO-FS: ',avg_dist_FO_FS)
     #print('avg FS-FO: ',avg_dist_FS_FO)
     return (avg_dist_FO_FS, avg_dist_FS_FO)
 
+
+# complete the list of prediction which is given if the same event is find twice
+# we use for this some averages relative to the walk of a given patient
+# these averages are given by the function calculate_avarage()
 def complete_data(list_predictions, FO_FS, FS_FO):
     current_label = ''
     save_label = ''
@@ -397,6 +431,9 @@ def complete_data(list_predictions, FO_FS, FS_FO):
     return list_predictions
 
 
+# allows to compute the distance in number of frame between a real event and a predicted event
+# for each file in a same pathology
+# retrieve all distances for only FO, only FS and both (Global)
 def calcul_error(predict_list, tab_real_event):
     number_frame_error = []
     number_frame_error_FO = []
@@ -426,6 +463,10 @@ def calcul_error(predict_list, tab_real_event):
     return number_frame_error, number_frame_error_FO, number_frame_error_FS
 
 
+# compute the cross validation
+# three set of test and train are defined
+# then apply functions get_data and get_prediction
+# return the mean of the score global given by the three permutations
 def cross_validation(files):
     list_of_files = glob.glob('./Sofamehack2019/Sub_DB_Checked/'+files+'/*.c3d')
     test1 = list_of_files[0:(len(list_of_files))/3]
@@ -445,7 +486,8 @@ def cross_validation(files):
     print('Mean global score: %.2e'%error)
     return error
 
-
+# main function
+# get the pathology in input : CP / FD / ITW
 def main(files='ITW'):
     cross_validation(files)
 
