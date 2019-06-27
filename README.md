@@ -3,6 +3,7 @@ A machine learning solution of the [SofameHack 2019 challenge](http://sofamehack
 ## Getting started
 ### Prerequisites
 * Python 2.7
+
 And the associated versions of:
 * numpy
 * scikit-learn
